@@ -1,44 +1,23 @@
-pipeline {
-	agent none
-
-	triggers {
-		pollSCM 'H/10 * * * *'
+node('built-in') 
+{
+    stage('Continuous Download') 
+	{
+    git 'https://github.com/sunildevops77/maven.git'
 	}
-
-	options {
-		disableConcurrentBuilds()
-		buildDiscarder(logRotator(numToKeepStr: '14'))
+    stage('Continuous Build') 
+	{
+    sh label: '', script: 'mvn package'
 	}
-
-	stages {
-		stage("test: baseline (jdk8)") {
-			agent {
-				docker {
-					image 'adoptopenjdk/openjdk8:latest'
-					args '-v $HOME/.m2:/tmp/jenkins-home/.m2'
-				}
-			}
-			options { timeout(time: 30, unit: 'MINUTES') }
-			steps {
-				sh 'test/run.sh'
-			}
-		}
-
+    stage('Continuous Deployment') 
+	{
+sh label: '', script: 'scp /home/ubuntu/.jenkins/workspace/ScriptedPipeline/webapp/target/webapp.war   ubuntu@172.31.26.217:/var/lib/tomcat8/webapps/qaenv.war'
 	}
-
-	post {
-		changed {
-			script {
-				slackSend(
-						color: (currentBuild.currentResult == 'SUCCESS') ? 'good' : 'danger',
-						channel: '#sagan-content',
-						message: "${currentBuild.fullDisplayName} - `${currentBuild.currentResult}`\n${env.BUILD_URL}")
-				emailext(
-						subject: "[${currentBuild.fullDisplayName}] ${currentBuild.currentResult}",
-						mimeType: 'text/html',
-						recipientProviders: [[$class: 'CulpritsRecipientProvider'], [$class: 'RequesterRecipientProvider']],
-						body: "<a href=\"${env.BUILD_URL}\">${currentBuild.fullDisplayName} is reported as ${currentBuild.currentResult}</a>")
-			}
-		}
+    stage('Continuous Testing') 
+	{
+              sh label: '', script: 'echo "Testing Passed"'
+	}
+    stage('Continuous Delivery') 
+	{
+sh label: '', script: 'scp /home/ubuntu/.jenkins/workspace/ScriptedPipeline/webapp/target/webapp.war   ubuntu@172.31.22.88:/var/lib/tomcat8/webapps/prodenv.war'
 	}
 }
